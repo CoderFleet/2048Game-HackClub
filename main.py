@@ -60,8 +60,8 @@ class Puzzle2048:
             for y in range(self.size):
                 cell = tk.Frame(self.window, width=self.tile_size, height=self.tile_size)
                 cell.grid(row=x + 1, column=y, padx=5, pady=5)
-                label = tk.Label(self.window, text="", justify=tk.CENTER, font=("Arial", 24), width=4, height=2)
-                label.grid(row=x + 1, column=y)
+                label = tk.Label(cell, text="", justify=tk.CENTER, font=("Arial", 24), width=4, height=2)
+                label.pack(expand=True)
                 row.append(label)
             self.tiles.append(row)
 
@@ -81,6 +81,7 @@ class Puzzle2048:
         self.add_random_tile()
         self.refresh_tiles()
         self.setup_controls()
+        self.remove_game_over_screen()  # Ensure game over screen is removed on reset
         self.game_over = False
 
     def add_random_tile(self):
@@ -200,18 +201,39 @@ class Puzzle2048:
 
     def display_game_over(self):
         self.game_over = True
+        self.game_over_frame = tk.Frame(self.window, bg="red")
+        self.game_over_frame.grid(row=1, column=0, columnspan=self.size, rowspan=self.size, sticky="nsew")
+        
         game_over_label = tk.Label(
-            self.window,
+            self.game_over_frame,
             text="Game Over",
             bg="red",
             fg="white",
             font=("Arial", 48)
         )
-        game_over_label.grid(row=1, column=0, columnspan=self.size, rowspan=self.size)
+        game_over_label.pack(pady=20)
+
+        restart_button = tk.Button(
+            self.game_over_frame,
+            text="Restart",
+            command=self.restart_game,
+            font=("Arial", 24)
+        )
+        restart_button.pack(pady=10)
+
         self.window.unbind("<Up>")
         self.window.unbind("<Down>")
         self.window.unbind("<Left>")
         self.window.unbind("<Right>")
+
+    def restart_game(self):
+        self.remove_game_over_screen()
+        self.reset_game()
+
+    def remove_game_over_screen(self):
+        if self.game_over:
+            self.game_over_frame.destroy()
+            self.game_over = False
 
     def save_game_state(self):
         game_state = {
