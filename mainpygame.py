@@ -19,6 +19,11 @@ ANIMATION_SPEED = 10
 screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
 pygame.display.set_caption('2048 Game')
 
+# Sound Effects
+merge_sound = pygame.mixer.Sound('merge.wav')
+win_sound = pygame.mixer.Sound('win.wav')
+
+# Fun variable names
 grid = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]
 score = 0
 
@@ -40,11 +45,11 @@ def draw_tiles():
     for i in range(GRID_SIZE):
         for j in range(GRID_SIZE):
             value = grid[i][j]
+            rect = pygame.Rect(GRID_PADDING + j * (tile_size + GRID_PADDING),
+                               GRID_PADDING + i * (tile_size + GRID_PADDING),
+                               tile_size, tile_size)
             if value > 0:
                 color = get_tile_color(value)
-                rect = pygame.Rect(GRID_PADDING + j * (tile_size + GRID_PADDING),
-                                   GRID_PADDING + i * (tile_size + GRID_PADDING),
-                                   tile_size, tile_size)
                 pygame.draw.rect(screen, color, rect)
                 font_size = 36 if value < 100 else 28
                 font = pygame.font.Font(None, font_size)
@@ -92,6 +97,7 @@ def move_tiles(direction):
                     moved |= merge_tiles(i, j, 0, 1)
     if moved:
         add_random_tile()
+        animate_move()
         time.sleep(0.1)
 
 def merge_tiles(row, col, dr, dc):
@@ -109,6 +115,9 @@ def merge_tiles(row, col, dr, dc):
             score += grid[row + dr][col + dc]
             grid[row][col] = 0
             moved = True
+            merge_sound.play()  # Play merge sound effect
+            if grid[row + dr][col + dc] == 2048:
+                win_sound.play()  # Play win sound effect if 2048 tile is formed
             break
         else:
             break
@@ -208,23 +217,40 @@ def update_game_state():
     if is_game_over():
         game_over_screen()
         initialize_game()
+    elif any(2048 in row for row in grid):
+        win_screen()
 
-def render():
-    draw_background()
-    draw_grid()
+def win_screen():
+    screen.fill(pygame.Color('black'))
+    font = pygame.font.Font(None, 48)
+    text = font.render("You Win!", True, pygame.Color('white'))
+    text_rect = text.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 - 40))
+    screen.blit(text, text_rect)
+    font = pygame.font.Font(None, 28)
+    text = font.render("Press 'R' to Restart", True, pygame.Color('white'))
+    text_rect = text.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 + 20))
+    screen.blit(text, text_rect)
+    pygame.display.flip()
+    pygame.time.wait(2000)
+
+def animate_move():
+    # Simple animation placeholder
     draw_animated_tiles()
-    draw_score()
-    draw_instructions()
+    time.sleep(0.1)
 
 def main():
     clock = pygame.time.Clock()
     initialize_game()
     while True:
         handle_events()
+        draw_background()
+        draw_grid()
+        draw_tiles()
+        draw_score()
+        draw_instructions()
         update_game_state()
-        render()
         pygame.display.flip()
         clock.tick(FPS)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
