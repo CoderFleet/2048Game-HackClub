@@ -2,6 +2,7 @@ import pygame
 import sys
 import random
 import time
+from copy import deepcopy
 
 pygame.init()
 
@@ -26,6 +27,9 @@ win_sound = pygame.mixer.Sound('win.wav')
 # Fun variable names
 grid = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]
 score = 0
+previous_grid = None
+previous_score = 0
+high_score = 0
 
 def draw_background():
     screen.fill(BACKGROUND_COLOR)
@@ -73,7 +77,9 @@ def add_random_tile():
         grid[i][j] = random.choice([2, 4])
 
 def move_tiles(direction):
-    global score
+    global score, previous_grid, previous_score
+    previous_grid = deepcopy(grid)
+    previous_score = score
     moved = False
     if direction == 'up':
         for j in range(GRID_SIZE):
@@ -101,7 +107,7 @@ def move_tiles(direction):
         time.sleep(0.1)
 
 def merge_tiles(row, col, dr, dc):
-    global score
+    global score, high_score
     moved = False
     while 0 <= row + dr < GRID_SIZE and 0 <= col + dc < GRID_SIZE:
         if grid[row + dr][col + dc] == 0:
@@ -121,10 +127,12 @@ def merge_tiles(row, col, dr, dc):
             break
         else:
             break
+    if score > high_score:
+        high_score = score
     return moved
 
 def handle_events():
-    global score
+    global score, grid, previous_grid, previous_score
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -140,11 +148,17 @@ def handle_events():
                 move_tiles('right')
             elif event.key == pygame.K_r:
                 initialize_game()
+            elif event.key == pygame.K_u:  # Undo feature
+                if previous_grid:
+                    grid = deepcopy(previous_grid)
+                    score = previous_score
 
 def initialize_game():
-    global grid, score
+    global grid, score, previous_grid, previous_score, high_score
     grid = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]
     score = 0
+    previous_grid = None
+    previous_score = 0
     add_random_tile()
     add_random_tile()
 
@@ -179,6 +193,8 @@ def game_over_screen():
 def draw_score():
     font = pygame.font.Font(None, 24)
     text = font.render(f"Score: {score}", True, pygame.Color('white'))
+    screen.blit(text, (GRID_PADDING, SCREEN_SIZE - GRID_PADDING - 40))
+    text = font.render(f"High Score: {high_score}", True, pygame.Color('white'))
     screen.blit(text, (GRID_PADDING, SCREEN_SIZE - GRID_PADDING - 20))
 
 def draw_instructions():
@@ -187,7 +203,8 @@ def draw_instructions():
         "Use arrow keys to move tiles",
         "Combine tiles with the same number",
         "Reach 2048 to win!",
-        "Press 'R' to restart"
+        "Press 'R' to restart",
+        "Press 'U' to undo"
     ]
     for i, text in enumerate(instructions):
         text_surface = font.render(text, True, INSTRUCTION_COLOR)
@@ -199,28 +216,20 @@ def draw_animated_tiles():
     for i in range(GRID_SIZE):
         for j in range(GRID_SIZE):
             value = grid[i][j]
+            rect = pygame.Rect(GRID_PADDING + j * (tile_size + GRID_PADDING),
+                               GRID_PADDING + i * (tile_size + GRID_PADDING),
+                               tile_size, tile_size)
             if value > 0:
                 color = get_tile_color(value)
-                rect = pygame.Rect(GRID_PADDING + j * (tile_size + GRID_PADDING),
-                                   GRID_PADDING + i * (tile_size + GRID_PADDING),
-                                   tile_size, tile_size)
                 pygame.draw.rect(screen, color, rect)
                 font_size = 36 if value < 100 else 28
                 font = pygame.font.Font(None, font_size)
                 text = font.render(str(value), True, pygame.Color('white'))
                 text_rect = text.get_rect(center=rect.center)
                 screen.blit(text, text_rect)
-                pygame.display.flip()
-                pygame.time.wait(50)
+                pygame.display.update(rect)
 
-def update_game_state():
-    if is_game_over():
-        game_over_screen()
-        initialize_game()
-    elif any(2048 in row for row in grid):
-        win_screen()
-
-def win_screen():
+def you_win_screen():
     screen.fill(pygame.Color('black'))
     font = pygame.font.Font(None, 48)
     text = font.render("You Win!", True, pygame.Color('white'))
@@ -234,7 +243,6 @@ def win_screen():
     pygame.time.wait(2000)
 
 def animate_move():
-    # Simple animation placeholder
     draw_animated_tiles()
     time.sleep(0.1)
 
@@ -248,7 +256,9 @@ def main():
         draw_tiles()
         draw_score()
         draw_instructions()
-        update_game_state()
+        if is_game_over():
+            game_over_screen()
+            initialize_game()
         pygame.display.flip()
         clock.tick(FPS)
 
