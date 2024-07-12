@@ -1,5 +1,7 @@
 import tkinter as tk
 import random
+import json
+import os
 
 class Puzzle2048:
     def __init__(self, window):
@@ -9,7 +11,7 @@ class Puzzle2048:
         self.tile_size = 100
         self.grid = [[0] * self.size for _ in range(self.size)]
         self.score = 0
-        self.high_score = 0  # Added high score tracking
+        self.high_score = 0
         self.colors = {
             0: ("#CCC0B3", "#776E65"),
             2: ("#EEE4DA", "#776E65"),
@@ -25,16 +27,16 @@ class Puzzle2048:
             2048: ("#EDC22E", "#F9F6F2"),
         }
         self.game_over = False
-        self.history = []  # To keep track of previous game states
+        self.history = []
+        self.load_game_state()
         self.create_score_label()
         self.create_high_score_label()
         self.create_tiles()
-        self.add_random_tile()
-        self.add_random_tile()
         self.refresh_tiles()
         self.setup_controls()
         self.create_reset_button()
         self.create_undo_button()
+        self.window.protocol("WM_DELETE_WINDOW", self.save_game_state)
 
     def create_score_label(self):
         self.score_label = tk.Label(self.window, text=f"Score: {self.score}", font=("Arial", 24))
@@ -130,7 +132,7 @@ class Puzzle2048:
         self.refresh_tiles()
 
     def save_history(self):
-        if len(self.history) >= 10:  # Limit the history to 10 moves
+        if len(self.history) >= 10:
             self.history.pop(0)
         self.history.append((self.copy_grid(self.grid), self.score))
 
@@ -164,6 +166,7 @@ class Puzzle2048:
             if len(line) >= 2 and line[0] == line[1]:
                 merged.append(2 * line[0])
                 self.update_score(2 * line[0])
+                self.animate_merge(line[0])
                 line = line[2:]
             else:
                 merged.append(line[0])
@@ -172,6 +175,13 @@ class Puzzle2048:
         if direction == 1:
             merged = merged[::-1]
         return merged
+
+    def animate_merge(self, value):
+        for x in range(self.size):
+            for y in range(self.size):
+                if self.grid[x][y] == value:
+                    self.tiles[x][y].config(font=("Arial", 28, "bold"))
+                    self.window.after(100, lambda: self.tiles[x][y].config(font=("Arial", 24)))
 
     def check_game_over(self):
         for x in range(self.size):
@@ -202,6 +212,29 @@ class Puzzle2048:
         self.window.unbind("<Down>")
         self.window.unbind("<Left>")
         self.window.unbind("<Right>")
+
+    def save_game_state(self):
+        game_state = {
+            'grid': self.grid,
+            'score': self.score,
+            'high_score': self.high_score,
+            'history': self.history
+        }
+        with open('2048_game_state.json', 'w') as file:
+            json.dump(game_state, file)
+        self.window.destroy()
+
+    def load_game_state(self):
+        if os.path.exists('2048_game_state.json'):
+            with open('2048_game_state.json', 'r') as file:
+                game_state = json.load(file)
+            self.grid = game_state['grid']
+            self.score = game_state['score']
+            self.high_score = game_state['high_score']
+            self.history = game_state['history']
+        else:
+            self.add_random_tile()
+            self.add_random_tile()
 
 app = tk.Tk()
 game = Puzzle2048(app)
