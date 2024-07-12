@@ -29,7 +29,7 @@ def draw_tiles():
         for j in range(grid_size):
             value = grid[i][j]
             if value > 0:
-                color = pygame.Color('blue')  # Placeholder color
+                color = get_tile_color(value)
                 rect = pygame.Rect(grid_padding + j * (tile_size + grid_padding),
                                    grid_padding + i * (tile_size + grid_padding),
                                    tile_size, tile_size)
@@ -39,17 +39,79 @@ def draw_tiles():
                 text_rect = text.get_rect(center=rect.center)
                 screen.blit(text, text_rect)
 
+def get_tile_color(value):
+    colors = {
+        2: pygame.Color('#eee4da'),
+        4: pygame.Color('#ede0c8'),
+        8: pygame.Color('#f2b179'),
+        16: pygame.Color('#f59563'),
+        32: pygame.Color('#f67c5f'),
+        64: pygame.Color('#f65e3b'),
+        128: pygame.Color('#edcf72'),
+        256: pygame.Color('#edcc61'),
+        512: pygame.Color('#edc850'),
+        1024: pygame.Color('#edc53f'),
+        2048: pygame.Color('#edc22e'),
+    }
+    return colors.get(value, pygame.Color('#3c3a32'))
+
 def add_random_tile():
     empty_cells = [(i, j) for i in range(grid_size) for j in range(grid_size) if grid[i][j] == 0]
     if empty_cells:
         i, j = random.choice(empty_cells)
-        grid[i][j] = random.choice([2, 4])  # Randomly choose 2 or 4 for new tile
+        grid[i][j] = random.choice([2, 4])
+
+def move_tiles(direction):
+    if direction == 'up':
+        for j in range(grid_size):
+            for i in range(1, grid_size):
+                if grid[i][j] != 0:
+                    merge_tiles(i, j, -1, 0)
+    elif direction == 'down':
+        for j in range(grid_size):
+            for i in range(grid_size - 2, -1, -1):
+                if grid[i][j] != 0:
+                    merge_tiles(i, j, 1, 0)
+    elif direction == 'left':
+        for i in range(grid_size):
+            for j in range(1, grid_size):
+                if grid[i][j] != 0:
+                    merge_tiles(i, j, 0, -1)
+    elif direction == 'right':
+        for i in range(grid_size):
+            for j in range(grid_size - 2, -1, -1):
+                if grid[i][j] != 0:
+                    merge_tiles(i, j, 0, 1)
+    add_random_tile()
+
+def merge_tiles(i, j, di, dj):
+    while 0 <= i + di < grid_size and 0 <= j + dj < grid_size:
+        if grid[i + di][j + dj] == 0:
+            grid[i + di][j + dj] = grid[i][j]
+            grid[i][j] = 0
+            i += di
+            j += dj
+        elif grid[i + di][j + dj] == grid[i][j]:
+            grid[i + di][j + dj] *= 2
+            grid[i][j] = 0
+            break
+        else:
+            break
 
 def handle_events():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                move_tiles('up')
+            elif event.key == pygame.K_DOWN:
+                move_tiles('down')
+            elif event.key == pygame.K_LEFT:
+                move_tiles('left')
+            elif event.key == pygame.K_RIGHT:
+                move_tiles('right')
 
 def update_game_state():
     pass
@@ -60,7 +122,7 @@ def render():
     draw_tiles()
 
 def main():
-    add_random_tile()  # Add initial random tile
+    add_random_tile()
     while True:
         handle_events()
         update_game_state()
