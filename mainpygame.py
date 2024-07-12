@@ -4,34 +4,34 @@ import random
 
 pygame.init()
 
-screen_size = 400
-grid_size = 4
-grid_padding = 10
-grid_line_width = 2
+SCREEN_SIZE = 400
+GRID_SIZE = 4
+GRID_PADDING = 10
+GRID_LINE_WIDTH = 2
 
-screen = pygame.display.set_mode((screen_size, screen_size))
+screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
 pygame.display.set_caption('2048 Game')
 
-grid = [[0] * grid_size for _ in range(grid_size)]
+grid = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]
 
 def draw_grid():
-    for i in range(grid_size + 1):
-        x = grid_padding + i * (screen_size - grid_padding * 2) // grid_size
-        pygame.draw.line(screen, pygame.Color('gray'), (x, grid_padding), (x, screen_size - grid_padding), grid_line_width)
+    for i in range(GRID_SIZE + 1):
+        x = GRID_PADDING + i * (SCREEN_SIZE - GRID_PADDING * 2) // GRID_SIZE
+        pygame.draw.line(screen, pygame.Color('gray'), (x, GRID_PADDING), (x, SCREEN_SIZE - GRID_PADDING), GRID_LINE_WIDTH)
 
-    for i in range(grid_size + 1):
-        y = grid_padding + i * (screen_size - grid_padding * 2) // grid_size
-        pygame.draw.line(screen, pygame.Color('gray'), (grid_padding, y), (screen_size - grid_padding, y), grid_line_width)
+    for i in range(GRID_SIZE + 1):
+        y = GRID_PADDING + i * (SCREEN_SIZE - GRID_PADDING * 2) // GRID_SIZE
+        pygame.draw.line(screen, pygame.Color('gray'), (GRID_PADDING, y), (SCREEN_SIZE - GRID_PADDING, y), GRID_LINE_WIDTH)
 
 def draw_tiles():
-    tile_size = (screen_size - (grid_padding * (grid_size + 1))) // grid_size
-    for i in range(grid_size):
-        for j in range(grid_size):
+    tile_size = (SCREEN_SIZE - (GRID_PADDING * (GRID_SIZE + 1))) // GRID_SIZE
+    for i in range(GRID_SIZE):
+        for j in range(GRID_SIZE):
             value = grid[i][j]
             if value > 0:
                 color = get_tile_color(value)
-                rect = pygame.Rect(grid_padding + j * (tile_size + grid_padding),
-                                   grid_padding + i * (tile_size + grid_padding),
+                rect = pygame.Rect(GRID_PADDING + j * (tile_size + GRID_PADDING),
+                                   GRID_PADDING + i * (tile_size + GRID_PADDING),
                                    tile_size, tile_size)
                 pygame.draw.rect(screen, color, rect)
                 font = pygame.font.Font(None, 36)
@@ -56,44 +56,44 @@ def get_tile_color(value):
     return colors.get(value, pygame.Color('#3c3a32'))
 
 def add_random_tile():
-    empty_cells = [(i, j) for i in range(grid_size) for j in range(grid_size) if grid[i][j] == 0]
+    empty_cells = [(i, j) for i in range(GRID_SIZE) for j in range(GRID_SIZE) if grid[i][j] == 0]
     if empty_cells:
         i, j = random.choice(empty_cells)
         grid[i][j] = random.choice([2, 4])
 
 def move_tiles(direction):
     if direction == 'up':
-        for j in range(grid_size):
-            for i in range(1, grid_size):
+        for j in range(GRID_SIZE):
+            for i in range(1, GRID_SIZE):
                 if grid[i][j] != 0:
                     merge_tiles(i, j, -1, 0)
     elif direction == 'down':
-        for j in range(grid_size):
-            for i in range(grid_size - 2, -1, -1):
+        for j in range(GRID_SIZE):
+            for i in range(GRID_SIZE - 2, -1, -1):
                 if grid[i][j] != 0:
                     merge_tiles(i, j, 1, 0)
     elif direction == 'left':
-        for i in range(grid_size):
-            for j in range(1, grid_size):
+        for i in range(GRID_SIZE):
+            for j in range(1, GRID_SIZE):
                 if grid[i][j] != 0:
                     merge_tiles(i, j, 0, -1)
     elif direction == 'right':
-        for i in range(grid_size):
-            for j in range(grid_size - 2, -1, -1):
+        for i in range(GRID_SIZE):
+            for j in range(GRID_SIZE - 2, -1, -1):
                 if grid[i][j] != 0:
                     merge_tiles(i, j, 0, 1)
     add_random_tile()
 
-def merge_tiles(i, j, di, dj):
-    while 0 <= i + di < grid_size and 0 <= j + dj < grid_size:
-        if grid[i + di][j + dj] == 0:
-            grid[i + di][j + dj] = grid[i][j]
-            grid[i][j] = 0
-            i += di
-            j += dj
-        elif grid[i + di][j + dj] == grid[i][j]:
-            grid[i + di][j + dj] *= 2
-            grid[i][j] = 0
+def merge_tiles(row, col, dr, dc):
+    while 0 <= row + dr < GRID_SIZE and 0 <= col + dc < GRID_SIZE:
+        if grid[row + dr][col + dc] == 0:
+            grid[row + dr][col + dc] = grid[row][col]
+            grid[row][col] = 0
+            row += dr
+            col += dc
+        elif grid[row + dr][col + dc] == grid[row][col]:
+            grid[row + dr][col + dc] *= 2
+            grid[row][col] = 0
             break
         else:
             break
@@ -113,8 +113,35 @@ def handle_events():
             elif event.key == pygame.K_RIGHT:
                 move_tiles('right')
 
+def is_game_over():
+    for i in range(GRID_SIZE):
+        for j in range(GRID_SIZE):
+            if grid[i][j] == 0:
+                return False
+            if i > 0 and grid[i][j] == grid[i - 1][j]:
+                return False
+            if i < GRID_SIZE - 1 and grid[i][j] == grid[i + 1][j]:
+                return False
+            if j > 0 and grid[i][j] == grid[i][j - 1]:
+                return False
+            if j < GRID_SIZE - 1 and grid[i][j] == grid[i][j + 1]:
+                return False
+    return True
+
+def game_over_screen():
+    screen.fill(pygame.Color('black'))
+    font = pygame.font.Font(None, 48)
+    text = font.render("Game Over!", True, pygame.Color('white'))
+    text_rect = text.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2))
+    screen.blit(text, text_rect)
+    pygame.display.flip()
+    pygame.time.wait(2000)
+
 def update_game_state():
-    pass
+    if is_game_over():
+        game_over_screen()
+        pygame.quit()
+        sys.exit()
 
 def render():
     screen.fill(pygame.Color('black'))
