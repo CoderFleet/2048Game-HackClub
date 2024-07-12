@@ -8,20 +8,28 @@ SCREEN_SIZE = 400
 GRID_SIZE = 4
 GRID_PADDING = 10
 GRID_LINE_WIDTH = 2
+BACKGROUND_COLOR = pygame.Color('#92877d')
+EMPTY_TILE_COLOR = pygame.Color('#9e948a')
+INSTRUCTION_COLOR = pygame.Color('#776e65')
 
 screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
 pygame.display.set_caption('2048 Game')
 
 grid = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]
+score = 0
+
+def draw_background():
+    screen.fill(BACKGROUND_COLOR)
+    pygame.draw.rect(screen, pygame.Color('#bbada0'), (GRID_PADDING, GRID_PADDING, SCREEN_SIZE - 2 * GRID_PADDING, SCREEN_SIZE - 2 * GRID_PADDING))
 
 def draw_grid():
     for i in range(GRID_SIZE + 1):
         x = GRID_PADDING + i * (SCREEN_SIZE - GRID_PADDING * 2) // GRID_SIZE
-        pygame.draw.line(screen, pygame.Color('gray'), (x, GRID_PADDING), (x, SCREEN_SIZE - GRID_PADDING), GRID_LINE_WIDTH)
+        pygame.draw.line(screen, pygame.Color('#776e65'), (x, GRID_PADDING), (x, SCREEN_SIZE - GRID_PADDING), GRID_LINE_WIDTH)
 
     for i in range(GRID_SIZE + 1):
         y = GRID_PADDING + i * (SCREEN_SIZE - GRID_PADDING * 2) // GRID_SIZE
-        pygame.draw.line(screen, pygame.Color('gray'), (GRID_PADDING, y), (SCREEN_SIZE - GRID_PADDING, y), GRID_LINE_WIDTH)
+        pygame.draw.line(screen, pygame.Color('#776e65'), (GRID_PADDING, y), (SCREEN_SIZE - GRID_PADDING, y), GRID_LINE_WIDTH)
 
 def draw_tiles():
     tile_size = (SCREEN_SIZE - (GRID_PADDING * (GRID_SIZE + 1))) // GRID_SIZE
@@ -34,26 +42,20 @@ def draw_tiles():
                                    GRID_PADDING + i * (tile_size + GRID_PADDING),
                                    tile_size, tile_size)
                 pygame.draw.rect(screen, color, rect)
-                font = pygame.font.Font(None, 36)
+                font_size = 36 if value < 100 else 28
+                font = pygame.font.Font(None, font_size)
                 text = font.render(str(value), True, pygame.Color('white'))
                 text_rect = text.get_rect(center=rect.center)
                 screen.blit(text, text_rect)
+            else:
+                pygame.draw.rect(screen, EMPTY_TILE_COLOR, rect)
 
 def get_tile_color(value):
-    colors = {
-        2: pygame.Color('#eee4da'),
-        4: pygame.Color('#ede0c8'),
-        8: pygame.Color('#f2b179'),
-        16: pygame.Color('#f59563'),
-        32: pygame.Color('#f67c5f'),
-        64: pygame.Color('#f65e3b'),
-        128: pygame.Color('#edcf72'),
-        256: pygame.Color('#edcc61'),
-        512: pygame.Color('#edc850'),
-        1024: pygame.Color('#edc53f'),
-        2048: pygame.Color('#edc22e'),
-    }
-    return colors.get(value, pygame.Color('#3c3a32'))
+    base_color = pygame.Color('#bbada0')
+    if value > 0:
+        exponent = min(11, value.bit_length() - 1)
+        base_color = pygame.Color('#%x' % (value << exponent | value))
+    return base_color
 
 def add_random_tile():
     empty_cells = [(i, j) for i in range(GRID_SIZE) for j in range(GRID_SIZE) if grid[i][j] == 0]
@@ -62,6 +64,7 @@ def add_random_tile():
         grid[i][j] = random.choice([2, 4])
 
 def move_tiles(direction):
+    global score
     if direction == 'up':
         for j in range(GRID_SIZE):
             for i in range(1, GRID_SIZE):
@@ -85,6 +88,7 @@ def move_tiles(direction):
     add_random_tile()
 
 def merge_tiles(row, col, dr, dc):
+    global score
     while 0 <= row + dr < GRID_SIZE and 0 <= col + dc < GRID_SIZE:
         if grid[row + dr][col + dc] == 0:
             grid[row + dr][col + dc] = grid[row][col]
@@ -93,12 +97,14 @@ def merge_tiles(row, col, dr, dc):
             col += dc
         elif grid[row + dr][col + dc] == grid[row][col]:
             grid[row + dr][col + dc] *= 2
+            score += grid[row + dr][col + dc]
             grid[row][col] = 0
             break
         else:
             break
 
 def handle_events():
+    global score
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -112,6 +118,15 @@ def handle_events():
                 move_tiles('left')
             elif event.key == pygame.K_RIGHT:
                 move_tiles('right')
+            elif event.key == pygame.K_r:
+                initialize_game()
+
+def initialize_game():
+    global grid, score
+    grid = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]
+    score = 0
+    add_random_tile()
+    add_random_tile()
 
 def is_game_over():
     for i in range(GRID_SIZE):
@@ -132,24 +147,47 @@ def game_over_screen():
     screen.fill(pygame.Color('black'))
     font = pygame.font.Font(None, 48)
     text = font.render("Game Over!", True, pygame.Color('white'))
-    text_rect = text.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2))
+    text_rect = text.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 - 40))
+    screen.blit(text, text_rect)
+    font = pygame.font.Font(None, 28)
+    text = font.render("Press 'R' to Restart", True, pygame.Color('white'))
+    text_rect = text.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2 + 20))
     screen.blit(text, text_rect)
     pygame.display.flip()
     pygame.time.wait(2000)
 
+def draw_score():
+    font = pygame.font.Font(None, 24)
+    text = font.render(f"Score: {score}", True, pygame.Color('white'))
+    screen.blit(text, (GRID_PADDING, SCREEN_SIZE - GRID_PADDING - 20))
+
+def draw_instructions():
+    font = pygame.font.Font(None, 16)
+    instructions = [
+        "Use arrow keys to move tiles",
+        "Combine tiles with the same number",
+        "Reach 2048 to win!",
+        "Press 'R' to restart"
+    ]
+    for i, text in enumerate(instructions):
+        text_surface = font.render(text, True, INSTRUCTION_COLOR)
+        text_rect = text_surface.get_rect(left=GRID_PADDING, top=GRID_SIZE * 70 + i * 20)
+        screen.blit(text_surface, text_rect)
+
 def update_game_state():
     if is_game_over():
         game_over_screen()
-        pygame.quit()
-        sys.exit()
+        initialize_game()
 
 def render():
-    screen.fill(pygame.Color('black'))
+    draw_background()
     draw_grid()
     draw_tiles()
+    draw_score()
+    draw_instructions()
 
 def main():
-    add_random_tile()
+    initialize_game()
     while True:
         handle_events()
         update_game_state()
