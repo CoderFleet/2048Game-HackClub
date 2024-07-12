@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import time
 
 pygame.init()
 
@@ -11,6 +12,9 @@ GRID_LINE_WIDTH = 2
 BACKGROUND_COLOR = pygame.Color('#92877d')
 EMPTY_TILE_COLOR = pygame.Color('#9e948a')
 INSTRUCTION_COLOR = pygame.Color('#776e65')
+
+FPS = 60
+ANIMATION_SPEED = 10
 
 screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
 pygame.display.set_caption('2048 Game')
@@ -65,43 +69,50 @@ def add_random_tile():
 
 def move_tiles(direction):
     global score
+    moved = False
     if direction == 'up':
         for j in range(GRID_SIZE):
             for i in range(1, GRID_SIZE):
                 if grid[i][j] != 0:
-                    merge_tiles(i, j, -1, 0)
+                    moved |= merge_tiles(i, j, -1, 0)
     elif direction == 'down':
         for j in range(GRID_SIZE):
             for i in range(GRID_SIZE - 2, -1, -1):
                 if grid[i][j] != 0:
-                    merge_tiles(i, j, 1, 0)
+                    moved |= merge_tiles(i, j, 1, 0)
     elif direction == 'left':
         for i in range(GRID_SIZE):
             for j in range(1, GRID_SIZE):
                 if grid[i][j] != 0:
-                    merge_tiles(i, j, 0, -1)
+                    moved |= merge_tiles(i, j, 0, -1)
     elif direction == 'right':
         for i in range(GRID_SIZE):
             for j in range(GRID_SIZE - 2, -1, -1):
                 if grid[i][j] != 0:
-                    merge_tiles(i, j, 0, 1)
-    add_random_tile()
+                    moved |= merge_tiles(i, j, 0, 1)
+    if moved:
+        add_random_tile()
+        time.sleep(0.1)
 
 def merge_tiles(row, col, dr, dc):
     global score
+    moved = False
     while 0 <= row + dr < GRID_SIZE and 0 <= col + dc < GRID_SIZE:
         if grid[row + dr][col + dc] == 0:
             grid[row + dr][col + dc] = grid[row][col]
             grid[row][col] = 0
             row += dr
             col += dc
+            moved = True
         elif grid[row + dr][col + dc] == grid[row][col]:
             grid[row + dr][col + dc] *= 2
             score += grid[row + dr][col + dc]
             grid[row][col] = 0
+            moved = True
             break
         else:
             break
+    return moved
 
 def handle_events():
     global score
@@ -174,6 +185,25 @@ def draw_instructions():
         text_rect = text_surface.get_rect(left=GRID_PADDING, top=GRID_SIZE * 70 + i * 20)
         screen.blit(text_surface, text_rect)
 
+def draw_animated_tiles():
+    tile_size = (SCREEN_SIZE - (GRID_PADDING * (GRID_SIZE + 1))) // GRID_SIZE
+    for i in range(GRID_SIZE):
+        for j in range(GRID_SIZE):
+            value = grid[i][j]
+            if value > 0:
+                color = get_tile_color(value)
+                rect = pygame.Rect(GRID_PADDING + j * (tile_size + GRID_PADDING),
+                                   GRID_PADDING + i * (tile_size + GRID_PADDING),
+                                   tile_size, tile_size)
+                pygame.draw.rect(screen, color, rect)
+                font_size = 36 if value < 100 else 28
+                font = pygame.font.Font(None, font_size)
+                text = font.render(str(value), True, pygame.Color('white'))
+                text_rect = text.get_rect(center=rect.center)
+                screen.blit(text, text_rect)
+                pygame.display.flip()
+                pygame.time.wait(50)
+
 def update_game_state():
     if is_game_over():
         game_over_screen()
@@ -182,17 +212,19 @@ def update_game_state():
 def render():
     draw_background()
     draw_grid()
-    draw_tiles()
+    draw_animated_tiles()
     draw_score()
     draw_instructions()
 
 def main():
+    clock = pygame.time.Clock()
     initialize_game()
     while True:
         handle_events()
         update_game_state()
         render()
         pygame.display.flip()
+        clock.tick(FPS)
 
 if __name__ == '__main__':
     main()
