@@ -9,6 +9,7 @@ class Puzzle2048:
         self.tile_size = 100
         self.grid = [[0] * self.size for _ in range(self.size)]
         self.score = 0
+        self.high_score = 0  # Added high score tracking
         self.colors = {
             0: ("#CCC0B3", "#776E65"),
             2: ("#EEE4DA", "#776E65"),
@@ -23,22 +24,32 @@ class Puzzle2048:
             1024: ("#EDC53F", "#F9F6F2"),
             2048: ("#EDC22E", "#F9F6F2"),
         }
+        self.game_over = False
+        self.history = []  # To keep track of previous game states
         self.create_score_label()
+        self.create_high_score_label()
         self.create_tiles()
         self.add_random_tile()
         self.add_random_tile()
         self.refresh_tiles()
         self.setup_controls()
         self.create_reset_button()
-        self.game_over = False
+        self.create_undo_button()
 
     def create_score_label(self):
         self.score_label = tk.Label(self.window, text=f"Score: {self.score}", font=("Arial", 24))
-        self.score_label.grid(row=0, column=0, columnspan=self.size)
+        self.score_label.grid(row=0, column=0, columnspan=self.size // 2)
+
+    def create_high_score_label(self):
+        self.high_score_label = tk.Label(self.window, text=f"High Score: {self.high_score}", font=("Arial", 24))
+        self.high_score_label.grid(row=0, column=self.size // 2, columnspan=self.size // 2)
 
     def update_score(self, points):
         self.score += points
         self.score_label.config(text=f"Score: {self.score}")
+        if self.score > self.high_score:
+            self.high_score = self.score
+            self.high_score_label.config(text=f"High Score: {self.high_score}")
 
     def create_tiles(self):
         self.tiles = []
@@ -54,7 +65,11 @@ class Puzzle2048:
 
     def create_reset_button(self):
         reset_button = tk.Button(self.window, text="Reset", command=self.reset_game)
-        reset_button.grid(row=self.size + 1, column=0, columnspan=self.size)
+        reset_button.grid(row=self.size + 1, column=0, columnspan=self.size // 2)
+
+    def create_undo_button(self):
+        undo_button = tk.Button(self.window, text="Undo", command=self.undo_move)
+        undo_button.grid(row=self.size + 1, column=self.size // 2, columnspan=self.size // 2)
 
     def reset_game(self):
         self.grid = [[0] * self.size for _ in range(self.size)]
@@ -91,24 +106,42 @@ class Puzzle2048:
         self.window.bind("<Right>", self.go_right)
 
     def go_up(self, event):
+        self.save_history()
         self.shift_tiles_vertically(-1)
         self.add_random_tile()
         self.refresh_tiles()
 
     def go_down(self, event):
+        self.save_history()
         self.shift_tiles_vertically(1)
         self.add_random_tile()
         self.refresh_tiles()
 
     def go_left(self, event):
+        self.save_history()
         self.shift_tiles_horizontally(-1)
         self.add_random_tile()
         self.refresh_tiles()
 
     def go_right(self, event):
+        self.save_history()
         self.shift_tiles_horizontally(1)
         self.add_random_tile()
         self.refresh_tiles()
+
+    def save_history(self):
+        if len(self.history) >= 10:  # Limit the history to 10 moves
+            self.history.pop(0)
+        self.history.append((self.copy_grid(self.grid), self.score))
+
+    def copy_grid(self, grid):
+        return [row[:] for row in grid]
+
+    def undo_move(self):
+        if self.history:
+            self.grid, self.score = self.history.pop()
+            self.refresh_tiles()
+            self.update_score(0)
 
     def shift_tiles_vertically(self, direction):
         for y in range(self.size):
@@ -157,13 +190,10 @@ class Puzzle2048:
 
     def display_game_over(self):
         self.game_over = True
-        for x in range(self.size):
-            for y in range(self.size):
-                self.tiles[x][y].config(text="Game Over", bg="red", fg="white")
         game_over_label = tk.Label(
             self.window,
             text="Game Over",
-            bg="black",
+            bg="red",
             fg="white",
             font=("Arial", 48)
         )
